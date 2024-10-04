@@ -1,0 +1,15 @@
+version: "3.8"
+
+# Base compose to create a development environment to run this golang project
+services:
+  # Service to run the golang project
+  namepicker:
+    build: .
+    image: namepicke
+    container_name: namepicker
+    ports:
+      - "8080:8080"
+    volumes:
+      - .:/app
+      # sleep infinity to keep the container running
+    command: ["sleep", "infinity"]
