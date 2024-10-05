@@ -16,19 +16,20 @@ const (
 )
 
 type Model struct {
-	cursor           int
-	selectedNames    map[int]struct{}
-	selectedLanguage string
-	selectedSource   string
-	names            []string
-	languages        []string
-	sources          []string
-	filePath         textinput.Model
-	inputNames       textinput.Model
-	inputNamesData   string
-	filePathData     string
-	typing           bool
-	err              error
+	cursor              int
+	selectedNames       map[int]struct{}
+	selectedLanguage    string
+	selectedSource      string
+	names               []string
+	languages           []string
+	sources             []string
+	filePath            textinput.Model
+	inputNames          textinput.Model
+	inputNamesData      string
+	filePathData        string
+	typing              bool
+	currentChoiceLength int
+	err                 error
 }
 
 type Header lang.Label
@@ -59,22 +60,21 @@ func InitialModel() Model {
 	namesTi.CharLimit = 156
 	namesTi.Width = 20
 	namesTi.Placeholder = "John, Jane, Alice"
-	namesTi.SetValue("John, Jane, Alice")
 	pathTi := textinput.New()
 	pathTi.CharLimit = 156
 	pathTi.Width = 20
 	pathTi.Placeholder = "names.txt"
-	pathTi.SetValue("names.txt")
 
 	return Model{
-		names:         nameChoices[RANDOM],
-		selectedNames: make(map[int]struct{}),
-		cursor:        0,
-		languages:     lang.GetAvailableLanguages(),
-		sources:       []string{RANDOM, FILE, MANUAL},
-		inputNames:    namesTi,
-		filePath:      pathTi,
-		err:           nil,
+		names:               nameChoices[RANDOM],
+		selectedNames:       make(map[int]struct{}),
+		cursor:              0,
+		languages:           lang.GetAvailableLanguages(),
+		sources:             []string{RANDOM, FILE, MANUAL},
+		inputNames:          namesTi,
+		filePath:            pathTi,
+		err:                 nil,
+		currentChoiceLength: len(lang.GetAvailableLanguages()),
 	}
 }
 
@@ -84,7 +84,7 @@ func (m Model) Init() tea.Cmd {
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
-	// var cmd tea.Cmd
+	var cmd tea.Cmd
 
 	switch msg := msg.(type) {
 
@@ -111,47 +111,71 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		// The "down" and "j" keys move the cursor down
 		case "down", "j":
-			if m.cursor < len(m.names)-1 {
+			if m.cursor < m.currentChoiceLength-1 {
 				m.cursor++
 			}
 
-		// The "enter" key and the spacebar (a literal space) toggle
-		// the selected state for the item that the cursor is pointing at.
 		case "enter":
 
-			// if m.inputNames.Focused() {
+			// We handle the enter key differently depending on the current state of the model
 
-			// 	m.inputNames.Blur()
-			// 	m.inputNamesData = m.inputNames.Value()
-			// 	m.names = utils.SplitString(m.inputNamesData, ",")
-			// 	return m, cmd
-			// }
+			if m.inputNames.Focused() {
+				m.inputNames.Blur()
+				m.inputNamesData = m.inputNames.Value()
+				m.names = utils.SplitString(m.inputNamesData, ",")
+				m.currentChoiceLength = len(m.names)
+				return m, cmd
+			}
 
-			// if m.filePath.Focused() {
-			// 	m.inputNames.Blur()
-			// 	m.filePathData = m.filePath.Value()
-			// 	names, err := utils.ReadNamesFromFile(m.filePathData)
+			if m.filePath.Focused() {
+				m.filePath.Blur()
+				m.filePathData = m.filePath.Value()
+				names, err := utils.ReadNamesFromFile(m.filePathData)
 
-			// 	if err != nil {
-			// 		m.err = err
-			// 		return m, nil
-			// 	}
+				if err != nil {
+					m.err = err
+					return m, nil
+				}
 
-			// 	m.names = names
-
-			// 	return m, cmd
-			// }
+				m.names = names
+				m.currentChoiceLength = len(m.names)
+				return m, cmd
+			}
 
 			// If the user has not selected a language yet
 			if m.selectedLanguage == "" {
 				m.selectedLanguage = m.languages[m.cursor]
+				m.currentChoiceLength = len(m.sources)
 				return m, nil
 			}
 
 			// If the user has not selected a source yet
 			if m.selectedSource == "" {
 				m.selectedSource = m.sources[m.cursor]
+
+				// If the source is random, we need to randomize the names
+				if m.selectedSource == RANDOM {
+					m.currentChoiceLength = len(m.names)
+					m.names = utils.RandomizeSlice(m.names)
+					return m, nil
+				}
+
+				// If the source is a file, we need to ask the user for the file path
+				if m.selectedSource == FILE {
+					m.filePath.Focus()
+					m.filePath.Cursor.Blink = true
+					return m, nil
+				}
+
+				// If the source is manual, we need to ask the user for the names
+				if m.selectedSource == MANUAL {
+					m.inputNames.Focus()
+					m.inputNames.Cursor.Blink = true
+					return m, nil
+				}
+
 				m.names = inicializeNameChoices()[m.selectedSource]
+				m.currentChoiceLength = len(m.names)
 				return m, nil
 			}
 
@@ -162,27 +186,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.selectedNames[m.cursor] = struct{}{}
 			}
 
-			// case " ":
-
-			// 	// If the user has not selected a language yet
-			// 	if m.selectedLanguage == "" {
-			// 		m.selectedLanguage = m.languages[m.cursor]
-			// 		return m, nil
-			// 	}
-
-			// 	// If the user has not selected a source yet
-			// 	if m.selectedSource == "" {
-			// 		m.selectedSource = m.sources[m.cursor]
-			// 		m.names = inicializeNameChoices()[m.selectedSource]
-			// 		return m, nil
-			// 	}
-
-			// 	_, ok := m.selectedNames[m.cursor]
-			// 	if ok {
-			// 		delete(m.selectedNames, m.cursor)
-			// 	} else {
-			// 		m.selectedNames[m.cursor] = struct{}{}
-			// 	}
 		}
 	}
 
@@ -190,18 +193,17 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// If we are reading input, we need to handle the input
 	// and update the model accordingly
 
-	// if m.typing {
-	// 	println("Typing")
-	// 	m.inputNames, cmd = m.inputNames.Update(msg)
-	// 	m.inputNames.Blur()
-	// 	// m.inputNamesData = m.inputNames.Value()
-	// 	// return m, cmd
+	switch {
+	case m.inputNames.Focused():
 
-	// 	m.filePath, cmd = m.filePath.Update(msg)
-	// 	m.filePath.Blur()
-	// 	// m.filePathData = m.inputNames.Value()
-	// 	return m, cmd
-	// }
+		m.inputNames, cmd = m.inputNames.Update(msg)
+		return m, cmd
+
+	case m.filePath.Focused():
+
+		m.filePath, cmd = m.filePath.Update(msg)
+		return m, cmd
+	}
 
 	// Return the updated model to the Bubble Tea runtime for processing.
 	// Note that we're not returning a command.
@@ -312,81 +314,55 @@ func (m Model) View() string {
 		return view
 	}
 
-	// If selected source is FILE  we need to show the input field
+	if m.filePath.Focused() {
 
-	// if m.selectedSource == FILE && m.filePathData == "" {
+		m.typing = true
 
-	// 	m.typing = true
+		view += header.Text[m.selectedLanguage]
 
-	// 	view += header.Text[m.selectedLanguage]
+		// Label to select the source
 
-	// 	// Label to select the source
-
-	// 	sourceLabel := lang.Label{
-	// 		Text: map[string]string{
-	// 			lang.English: "Enter the file path:\n",
-	// 			lang.Spanish: "Ingresa la ruta del archivo:\n",
-	// 		},
-	// 	}
-
-	// 	view += sourceLabel.Text[m.selectedLanguage]
-
-	// 	m.filePath.Focus()
-
-	// 	view += "\n"
-
-	// 	view += fmt.Sprintf("%s\n", m.filePath.View())
-
-	// 	view += footer.Text[m.selectedLanguage]
-
-	// 	return view
-	// }
-
-	// // If selected source is MANUAL we need to show the input field
-
-	// if m.selectedSource == MANUAL && m.inputNamesData == "" {
-
-	// 	m.typing = true
-
-	// 	view += header.Text[m.selectedLanguage]
-
-	// 	// Label to select the source
-	// 	sourceLabel := lang.Label{
-	// 		Text: map[string]string{
-	// 			lang.English: "Enter the names separated by commas:\n",
-	// 			lang.Spanish: "Ingresa los nombres separados por comas:\n",
-	// 		},
-	// 	}
-
-	// 	view += sourceLabel.Text[m.selectedLanguage]
-
-	// 	m.inputNames.Focus()
-
-	// 	view += "\n"
-
-	// 	view += fmt.Sprintf("%s\n", m.inputNames.View())
-
-	// 	view += footer.Text[m.selectedLanguage]
-
-	// 	return view
-	// }
-
-	if m.selectedSource == FILE && m.filePathData == "" {
-		m.filePathData = m.filePath.Value()
-		names, err := utils.ReadNamesFromFile(m.filePathData)
-
-		if err != nil {
-			m.err = err
-			m.names = make([]string, 0)
+		sourceLabel := lang.Label{
+			Text: map[string]string{
+				lang.English: "Enter the file path:\n",
+				lang.Spanish: "Ingresa la ruta del archivo:\n",
+			},
 		}
 
-		m.names = names
+		view += sourceLabel.Text[m.selectedLanguage]
 
+		view += "\n"
+
+		view += fmt.Sprintf("%s\n", m.filePath.View())
+
+		view += footer.Text[m.selectedLanguage]
+
+		return view
 	}
 
-	if m.selectedSource == MANUAL && m.inputNamesData == "" {
-		m.inputNamesData = m.inputNames.Value()
-		m.names = utils.SplitString(m.inputNamesData, ",")
+	if m.inputNames.Focused() {
+
+		m.typing = true
+
+		view += header.Text[m.selectedLanguage]
+
+		// Label to select the source
+		sourceLabel := lang.Label{
+			Text: map[string]string{
+				lang.English: "Enter the names separated by commas:\n",
+				lang.Spanish: "Ingresa los nombres separados por comas:\n",
+			},
+		}
+
+		view += sourceLabel.Text[m.selectedLanguage]
+
+		view += "\n"
+
+		view += fmt.Sprintf("%s\n", m.inputNames.View())
+
+		view += footer.Text[m.selectedLanguage]
+
+		return view
 	}
 
 	view += header.Text[m.selectedLanguage]
