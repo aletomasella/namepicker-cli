@@ -5,6 +5,7 @@ import (
 
 	"github.com/aletomasella/namepicker-cli/internal/lang"
 	"github.com/aletomasella/namepicker-cli/internal/utils"
+	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
@@ -22,8 +23,11 @@ type Model struct {
 	selectedSource   string
 	languages        []string
 	sources          []string
-	filePath         string
-	inputNames       string
+	filePath         textinput.Model
+	inputNames       textinput.Model
+	readingPath      bool
+	readingInput     bool
+	err              error
 }
 
 type Header lang.Label
@@ -57,6 +61,11 @@ func InitialModel() Model {
 		cursor:        0,
 		languages:     lang.GetAvailableLanguages(),
 		sources:       []string{RANDOM, FILE, MANUAL},
+		readingInput:  false,
+		readingPath:   false,
+		inputNames:    textinput.New(),
+		filePath:      textinput.New(),
+		err:           nil,
 	}
 }
 
@@ -65,10 +74,58 @@ func (m Model) Init() tea.Cmd {
 }
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+
+	var cmd tea.Cmd
+
 	switch msg := msg.(type) {
 
 	// Is it a key press?
 	case tea.KeyMsg:
+
+		switch msg.Type {
+		case tea.KeyCtrlC, tea.KeyEsc:
+			return m, tea.Quit
+		}
+
+		//Are we reading input?
+		if m.inputNames.Focused() {
+
+			// If we are reading input, we need to handle the input
+			// and update the model accordingly
+			if msg.Type == tea.KeyEnter {
+				m.readingInput = false
+				m.names = utils.SplitString(m.inputNames.Value(), ",")
+				return m, nil
+			}
+
+			m.inputNames, cmd = m.inputNames.Update(msg)
+			return m, cmd
+
+		}
+
+		// //Are we reading the file path?
+		if m.filePath.Focused() {
+			// If we are reading input, we need to handle the input
+			// and update the model accordingly
+
+			if msg.Type == tea.KeyEnter {
+				m.readingPath = false
+				names, err := utils.ReadNamesFromFile(m.filePath.Value())
+
+				if err != nil {
+					m.err = err
+					return m, nil
+				}
+
+				m.names = names
+				m.readingPath = false
+
+				return m, nil
+			}
+
+			m.filePath, cmd = m.filePath.Update(msg)
+			return m, cmd
+		}
 
 		// Cool, what was the actual key pressed?
 		switch msg.String() {
@@ -76,10 +133,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// The r key randomizes the order of the choices in the list
 		case "r":
 			m.names = utils.RandomizeSlice(m.names)
-
-		// These keys should exit the program.
-		case "ctrl+c", "q":
-			return m, tea.Quit
 
 		// The "up" and "k" keys move the cursor up
 		case "up", "k":
@@ -116,6 +169,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.selectedNames[m.cursor] = struct{}{}
 			}
 		}
+
+	case error:
+		m.err = msg
 	}
 
 	// Return the updated model to the Bubble Tea runtime for processing.
@@ -188,6 +244,15 @@ func (m Model) View() string {
 
 	}
 
+	// Check if an error occurred
+	if m.err != nil {
+		view += header.Text[m.selectedLanguage]
+
+		view += fmt.Sprintf("Error: %s\n", m.err.Error())
+
+		view += footer.Text[m.selectedLanguage]
+	}
+
 	if m.selectedSource == "" {
 		view += header.Text[m.selectedLanguage]
 
@@ -222,7 +287,85 @@ func (m Model) View() string {
 		return view
 	}
 
+	// If selected source is FILE  we need to show the input field
+
+	if m.selectedSource == FILE && m.filePath.Value() == "" {
+		view += header.Text[m.selectedLanguage]
+
+		m.readingPath = true
+		// Label to select the source
+
+		sourceLabel := lang.Label{
+			Text: map[string]string{
+				lang.English: "Enter the file path:\n",
+				lang.Spanish: "Ingresa la ruta del archivo:\n",
+			},
+			DefineLanguages: lang.GetAvailableLanguages(),
+		}
+
+		view += sourceLabel.Text[m.selectedLanguage]
+
+		m.filePath.Placeholder = "names.txt"
+		m.filePath.Focus()
+
+		view += m.filePath.View()
+
+		view += "\n"
+
+		view += footer.Text[m.selectedLanguage]
+
+		return view
+	}
+
+	// If selected source is MANUAL we need to show the input field
+
+	if m.selectedSource == MANUAL && m.inputNames.Value() == "" {
+		view += header.Text[m.selectedLanguage]
+
+		m.readingInput = true
+
+		// Label to select the source
+		sourceLabel := lang.Label{
+			Text: map[string]string{
+				lang.English: "Enter the names separated by commas:\n",
+				lang.Spanish: "Ingresa los nombres separados por comas:\n",
+			},
+			DefineLanguages: lang.GetAvailableLanguages(),
+		}
+
+		view += sourceLabel.Text[m.selectedLanguage]
+
+		m.inputNames.Placeholder = "John, Jane, Alice"
+		m.inputNames.Focus()
+
+		view += m.inputNames.View()
+
+		view += "\n"
+
+		view += footer.Text[m.selectedLanguage]
+
+		return view
+	}
+
 	view += header.Text[m.selectedLanguage]
+
+	// Check if names are empty
+	if len(m.names) == 0 {
+
+		emptyLabel := lang.Label{
+			Text: map[string]string{
+				lang.English: "No names available\n",
+				lang.Spanish: "No hay nombres disponibles\n",
+			},
+			DefineLanguages: lang.GetAvailableLanguages(),
+		}
+
+		view += emptyLabel.Text[m.selectedLanguage]
+
+		view += footer.Text[m.selectedLanguage]
+
+		return view
+	}
 
 	// Iterate over our choices
 	for i, choice := range m.names {
