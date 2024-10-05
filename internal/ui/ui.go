@@ -27,7 +27,6 @@ type Model struct {
 	inputNames          textinput.Model
 	inputNamesData      string
 	filePathData        string
-	typing              bool
 	currentChoiceLength int
 	err                 error
 }
@@ -101,7 +100,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		// The r key randomizes the order of the choices in the list
 		case "r":
-			m.names = utils.RandomizeSlice(m.names)
+			m.names, m.selectedNames = utils.RandomizeNonSelectedSlice(m.names, m.selectedNames)
 
 		// The "up" and "k" keys move the cursor up
 		case "up", "k":
@@ -276,9 +275,11 @@ func (m Model) View() string {
 	if m.err != nil {
 		view += header.Text[m.selectedLanguage]
 
-		view += fmt.Sprintf("Error: %s\n", m.err.Error())
+		view += fmt.Sprintf("Error: %s\n\n", m.err.Error())
 
 		view += footer.Text[m.selectedLanguage]
+
+		return view
 	}
 
 	if m.selectedSource == "" {
@@ -316,8 +317,6 @@ func (m Model) View() string {
 
 	if m.filePath.Focused() {
 
-		m.typing = true
-
 		view += header.Text[m.selectedLanguage]
 
 		// Label to select the source
@@ -341,8 +340,6 @@ func (m Model) View() string {
 	}
 
 	if m.inputNames.Focused() {
-
-		m.typing = true
 
 		view += header.Text[m.selectedLanguage]
 

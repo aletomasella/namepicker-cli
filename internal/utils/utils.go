@@ -7,6 +7,32 @@ import (
 	"strings"
 )
 
+func RandomizeNonSelectedSlice(slice []string, selected map[int]struct{}) ([]string, map[int]struct{}) {
+	// Create a new slice to store the non-selected elements
+	var nonSelected []string
+	var selectedSlice []string
+
+	// Iterate over the slice
+	for i, s := range slice {
+		// If the element is not selected, add it to the new slice
+		if _, ok := selected[i]; !ok {
+			nonSelected = append(nonSelected, s)
+			continue
+		}
+		selectedSlice = append(selectedSlice, s)
+	}
+
+	// We loop from selected & add them to the selected slice
+	newMap := make(map[int]struct{})
+
+	for i := 0; i < len(selectedSlice); i++ {
+		newMap[i] = struct{}{}
+	}
+
+	// Randomize the new slice
+	return append(selectedSlice, RandomizeSlice(nonSelected)...), newMap
+}
+
 func RandomizeSlice(slice []string) []string {
 
 	if len(slice) <= 1 {
