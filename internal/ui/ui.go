@@ -16,17 +16,17 @@ const (
 )
 
 type Model struct {
-	names            []string
 	cursor           int
 	selectedNames    map[int]struct{}
 	selectedLanguage string
 	selectedSource   string
+	names            []string
 	languages        []string
 	sources          []string
 	filePath         textinput.Model
 	inputNames       textinput.Model
-	readingPath      bool
-	readingInput     bool
+	inputNamesData   string
+	filePathData     string
 	err              error
 }
 
@@ -54,6 +54,13 @@ func InitialModel() Model {
 	nameChoices := inicializeNameChoices()
 
 	// Default name choices are the random names
+	namesTi := textinput.New()
+	namesTi.CharLimit = 156
+	namesTi.Width = 20
+
+	pathTi := textinput.New()
+	pathTi.CharLimit = 156
+	pathTi.Width = 20
 
 	return Model{
 		names:         nameChoices[RANDOM],
@@ -61,10 +68,8 @@ func InitialModel() Model {
 		cursor:        0,
 		languages:     lang.GetAvailableLanguages(),
 		sources:       []string{RANDOM, FILE, MANUAL},
-		readingInput:  false,
-		readingPath:   false,
-		inputNames:    textinput.New(),
-		filePath:      textinput.New(),
+		inputNames:    namesTi,
+		filePath:      pathTi,
 		err:           nil,
 	}
 }
@@ -87,48 +92,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		}
 
-		//Are we reading input?
-		if m.inputNames.Focused() {
-
-			// If we are reading input, we need to handle the input
-			// and update the model accordingly
-			if msg.Type == tea.KeyEnter {
-				m.readingInput = false
-				m.names = utils.SplitString(m.inputNames.Value(), ",")
-				return m, nil
-			}
-
-			m.inputNames, cmd = m.inputNames.Update(msg)
-			return m, cmd
-
-		}
-
-		// //Are we reading the file path?
-		if m.filePath.Focused() {
-			// If we are reading input, we need to handle the input
-			// and update the model accordingly
-
-			if msg.Type == tea.KeyEnter {
-				m.readingPath = false
-				names, err := utils.ReadNamesFromFile(m.filePath.Value())
-
-				if err != nil {
-					m.err = err
-					return m, nil
-				}
-
-				m.names = names
-				m.readingPath = false
-
-				return m, nil
-			}
-
-			m.filePath, cmd = m.filePath.Update(msg)
-			return m, cmd
-		}
-
-		// Cool, what was the actual key pressed?
+		//actual key pressed
 		switch msg.String() {
+
+		case "q":
+			return m, tea.Quit
 
 		// The r key randomizes the order of the choices in the list
 		case "r":
@@ -149,6 +117,25 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// The "enter" key and the spacebar (a literal space) toggle
 		// the selected state for the item that the cursor is pointing at.
 		case "enter", " ":
+
+			if m.inputNames.Focused() {
+				m.names = utils.SplitString(m.inputNames.Value(), ",")
+				return m, nil
+			}
+
+			if m.filePath.Focused() {
+				names, err := utils.ReadNamesFromFile(m.filePath.Value())
+
+				if err != nil {
+					m.err = err
+					return m, nil
+				}
+
+				m.names = names
+
+				return m, nil
+			}
+
 			// If the user has not selected a language yet
 			if m.selectedLanguage == "" {
 				m.selectedLanguage = m.languages[m.cursor]
@@ -169,9 +156,19 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.selectedNames[m.cursor] = struct{}{}
 			}
 		}
+	}
 
-	case error:
-		m.err = msg
+	// //Are we reading inputs?
+	// If we are reading input, we need to handle the input
+	// and update the model accordingly
+	if m.inputNames.Focused() {
+		m.inputNames, cmd = m.inputNames.Update(msg)
+		return m, cmd
+	}
+
+	if m.filePath.Focused() {
+		m.filePath, cmd = m.filePath.Update(msg)
+		return m, cmd
 	}
 
 	// Return the updated model to the Bubble Tea runtime for processing.
@@ -289,10 +286,9 @@ func (m Model) View() string {
 
 	// If selected source is FILE  we need to show the input field
 
-	if m.selectedSource == FILE && m.filePath.Value() == "" {
+	if m.selectedSource == FILE && m.filePathData == "" {
 		view += header.Text[m.selectedLanguage]
 
-		m.readingPath = true
 		// Label to select the source
 
 		sourceLabel := lang.Label{
@@ -308,9 +304,9 @@ func (m Model) View() string {
 		m.filePath.Placeholder = "names.txt"
 		m.filePath.Focus()
 
-		view += m.filePath.View()
-
 		view += "\n"
+
+		view += fmt.Sprintf("%s\n", m.filePath.View())
 
 		view += footer.Text[m.selectedLanguage]
 
@@ -319,10 +315,8 @@ func (m Model) View() string {
 
 	// If selected source is MANUAL we need to show the input field
 
-	if m.selectedSource == MANUAL && m.inputNames.Value() == "" {
+	if m.selectedSource == MANUAL && m.inputNamesData == "" {
 		view += header.Text[m.selectedLanguage]
-
-		m.readingInput = true
 
 		// Label to select the source
 		sourceLabel := lang.Label{
@@ -338,9 +332,9 @@ func (m Model) View() string {
 		m.inputNames.Placeholder = "John, Jane, Alice"
 		m.inputNames.Focus()
 
-		view += m.inputNames.View()
-
 		view += "\n"
+
+		view += fmt.Sprintf("%s\n", m.inputNames.View())
 
 		view += footer.Text[m.selectedLanguage]
 
