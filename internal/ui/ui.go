@@ -15,23 +15,20 @@ const (
 )
 
 type Model struct {
-	choices          []string
+	names            []string
 	cursor           int
-	selected         map[int]struct{}
+	selectedNames    map[int]struct{}
 	selectedLanguage string
 	selectedSource   string
+	languages        []string
+	sources          []string
+	filePath         string
+	inputNames       string
 }
 
 type Header lang.Label
 
 type Footer lang.Label
-
-// First the user must select the language from the available languages
-// Then the user must select from where do they want to get the names from:
-// - Random names
-// - Names from a file
-// - Write the names manually separated by commas
-// Then we execute our logic randomly selecting a name from the selected source and displaying it until the user quits or the source is empty
 
 func inicializeNameChoices() map[string][]string {
 	nameChoices := make(map[string][]string)
@@ -55,9 +52,11 @@ func InitialModel() Model {
 	// Default name choices are the random names
 
 	return Model{
-		choices:  nameChoices[RANDOM],
-		selected: make(map[int]struct{}),
-		cursor:   0,
+		names:         nameChoices[RANDOM],
+		selectedNames: make(map[int]struct{}),
+		cursor:        0,
+		languages:     lang.GetAvailableLanguages(),
+		sources:       []string{RANDOM, FILE, MANUAL},
 	}
 }
 
@@ -76,7 +75,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		// The r key randomizes the order of the choices in the list
 		case "r":
-			m.choices = utils.RandomizeSlice(m.choices)
+			m.names = utils.RandomizeSlice(m.names)
 
 		// These keys should exit the program.
 		case "ctrl+c", "q":
@@ -90,18 +89,31 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		// The "down" and "j" keys move the cursor down
 		case "down", "j":
-			if m.cursor < len(m.choices)-1 {
+			if m.cursor < len(m.names)-1 {
 				m.cursor++
 			}
 
 		// The "enter" key and the spacebar (a literal space) toggle
 		// the selected state for the item that the cursor is pointing at.
 		case "enter", " ":
-			_, ok := m.selected[m.cursor]
+			// If the user has not selected a language yet
+			if m.selectedLanguage == "" {
+				m.selectedLanguage = m.languages[m.cursor]
+				return m, nil
+			}
+
+			// If the user has not selected a source yet
+			if m.selectedSource == "" {
+				m.selectedSource = m.sources[m.cursor]
+				m.names = inicializeNameChoices()[m.selectedSource]
+				return m, nil
+			}
+
+			_, ok := m.selectedNames[m.cursor]
 			if ok {
-				delete(m.selected, m.cursor)
+				delete(m.selectedNames, m.cursor)
 			} else {
-				m.selected[m.cursor] = struct{}{}
+				m.selectedNames[m.cursor] = struct{}{}
 			}
 		}
 	}
@@ -112,38 +124,24 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) View() string {
-	// The header
 
 	// Default language is English
-	// The header
+	// First the user must select the language from the available languages
+	// Then the user must select from where do they want to get the names from:
+	// - Random names
+	// - Names from a file
+	// - Write the names manually separated by commas
 
+	// view
+	view := ""
+
+	// The header
 	header := Header{
 		Text: map[string]string{
-			lang.English: "Name Picker\n\n",
+			lang.English: "Random Name Picker\n\n",
 			lang.Spanish: "Selector de Nombres\n\n",
 		},
 		DefineLanguages: lang.GetAvailableLanguages(),
-	}
-
-	view := header.Text[lang.Spanish]
-
-	// Iterate over our choices
-	for i, choice := range m.choices {
-
-		// Is the cursor pointing at this choice?
-		cursor := " " // no cursor
-		if m.cursor == i {
-			cursor = ">" // cursor!
-		}
-
-		// Is this choice selected?
-		checked := " " // not selected
-		if _, ok := m.selected[i]; ok {
-			checked = "x" // selected!
-		}
-
-		// Render the row
-		view += fmt.Sprintf("%s [%s] %s\n", cursor, checked, choice)
 	}
 
 	// The footer
@@ -155,7 +153,97 @@ func (m Model) View() string {
 		DefineLanguages: lang.GetAvailableLanguages(),
 	}
 
-	view += footer.Text[lang.Spanish]
+	if m.selectedLanguage == "" {
+
+		view += header.Text[lang.English]
+
+		// Label to select the language
+		languageLabel := lang.Label{
+			Text: map[string]string{
+				lang.English: "Select the language:\n",
+				lang.Spanish: "Selecciona el idioma:\n",
+			},
+			DefineLanguages: lang.GetAvailableLanguages(),
+		}
+
+		view += languageLabel.Text[lang.English]
+
+		// Iterate over the available languages
+		for i, l := range m.languages {
+			// Is the cursor pointing at this choice?
+			cursor := " " // no cursor
+			if m.cursor == i {
+				cursor = ">" // cursor!
+			}
+
+			// Is this choice selected?
+			checked := " " // not selected
+
+			view += fmt.Sprintf("%s [%s] %s\n", cursor, checked, l)
+
+		}
+		view += footer.Text[lang.English]
+
+		return view
+
+	}
+
+	if m.selectedSource == "" {
+		view += header.Text[m.selectedLanguage]
+
+		// Label to select the source
+		sourceLabel := lang.Label{
+			Text: map[string]string{
+				lang.English: "Select the source:\n",
+				lang.Spanish: "Selecciona la fuente:\n",
+			},
+			DefineLanguages: lang.GetAvailableLanguages(),
+		}
+
+		view += sourceLabel.Text[m.selectedLanguage]
+
+		// Iterate over the available sources
+
+		for i, s := range m.sources {
+			// Is the cursor pointing at this choice?
+			cursor := " " // no cursor
+			if m.cursor == i {
+				cursor = ">" // cursor!
+			}
+
+			// Is this choice selected?
+			checked := " " // not selected
+
+			view += fmt.Sprintf("%s [%s] %s\n", cursor, checked, s)
+		}
+
+		view += footer.Text[m.selectedLanguage]
+
+		return view
+	}
+
+	view += header.Text[m.selectedLanguage]
+
+	// Iterate over our choices
+	for i, choice := range m.names {
+
+		// Is the cursor pointing at this choice?
+		cursor := " " // no cursor
+		if m.cursor == i {
+			cursor = ">" // cursor!
+		}
+
+		// Is this choice selected?
+		checked := " " // not selected
+		if _, ok := m.selectedNames[i]; ok {
+			checked = "x" // selected!
+		}
+
+		// Render the row
+		view += fmt.Sprintf("%s [%s] %s\n", cursor, checked, choice)
+	}
+
+	view += footer.Text[m.selectedLanguage]
 
 	// Send the UI for rendering
 	return view
