@@ -9,6 +9,10 @@ import (
 
 func RandomizeSlice(slice []string) []string {
 
+	if len(slice) <= 1 {
+		return slice
+	}
+
 	// Fisher-Yates shuffle
 	for i := len(slice) - 1; i > 0; i-- {
 		j := rand.Intn(i + 1)

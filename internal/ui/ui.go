@@ -27,6 +27,7 @@ type Model struct {
 	inputNames       textinput.Model
 	inputNamesData   string
 	filePathData     string
+	typing           bool
 	err              error
 }
 
@@ -57,10 +58,13 @@ func InitialModel() Model {
 	namesTi := textinput.New()
 	namesTi.CharLimit = 156
 	namesTi.Width = 20
-
+	namesTi.Placeholder = "John, Jane, Alice"
+	namesTi.SetValue("John, Jane, Alice")
 	pathTi := textinput.New()
 	pathTi.CharLimit = 156
 	pathTi.Width = 20
+	pathTi.Placeholder = "names.txt"
+	pathTi.SetValue("names.txt")
 
 	return Model{
 		names:         nameChoices[RANDOM],
@@ -80,7 +84,7 @@ func (m Model) Init() tea.Cmd {
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
-	var cmd tea.Cmd
+	// var cmd tea.Cmd
 
 	switch msg := msg.(type) {
 
@@ -94,9 +98,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		//actual key pressed
 		switch msg.String() {
-
-		case "q":
-			return m, tea.Quit
 
 		// The r key randomizes the order of the choices in the list
 		case "r":
@@ -116,25 +117,30 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		// The "enter" key and the spacebar (a literal space) toggle
 		// the selected state for the item that the cursor is pointing at.
-		case "enter", " ":
+		case "enter":
 
-			if m.inputNames.Focused() {
-				m.names = utils.SplitString(m.inputNames.Value(), ",")
-				return m, nil
-			}
+			// if m.inputNames.Focused() {
 
-			if m.filePath.Focused() {
-				names, err := utils.ReadNamesFromFile(m.filePath.Value())
+			// 	m.inputNames.Blur()
+			// 	m.inputNamesData = m.inputNames.Value()
+			// 	m.names = utils.SplitString(m.inputNamesData, ",")
+			// 	return m, cmd
+			// }
 
-				if err != nil {
-					m.err = err
-					return m, nil
-				}
+			// if m.filePath.Focused() {
+			// 	m.inputNames.Blur()
+			// 	m.filePathData = m.filePath.Value()
+			// 	names, err := utils.ReadNamesFromFile(m.filePathData)
 
-				m.names = names
+			// 	if err != nil {
+			// 		m.err = err
+			// 		return m, nil
+			// 	}
 
-				return m, nil
-			}
+			// 	m.names = names
+
+			// 	return m, cmd
+			// }
 
 			// If the user has not selected a language yet
 			if m.selectedLanguage == "" {
@@ -155,21 +161,47 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			} else {
 				m.selectedNames[m.cursor] = struct{}{}
 			}
+
+			// case " ":
+
+			// 	// If the user has not selected a language yet
+			// 	if m.selectedLanguage == "" {
+			// 		m.selectedLanguage = m.languages[m.cursor]
+			// 		return m, nil
+			// 	}
+
+			// 	// If the user has not selected a source yet
+			// 	if m.selectedSource == "" {
+			// 		m.selectedSource = m.sources[m.cursor]
+			// 		m.names = inicializeNameChoices()[m.selectedSource]
+			// 		return m, nil
+			// 	}
+
+			// 	_, ok := m.selectedNames[m.cursor]
+			// 	if ok {
+			// 		delete(m.selectedNames, m.cursor)
+			// 	} else {
+			// 		m.selectedNames[m.cursor] = struct{}{}
+			// 	}
 		}
 	}
 
 	// //Are we reading inputs?
 	// If we are reading input, we need to handle the input
 	// and update the model accordingly
-	if m.inputNames.Focused() {
-		m.inputNames, cmd = m.inputNames.Update(msg)
-		return m, cmd
-	}
 
-	if m.filePath.Focused() {
-		m.filePath, cmd = m.filePath.Update(msg)
-		return m, cmd
-	}
+	// if m.typing {
+	// 	println("Typing")
+	// 	m.inputNames, cmd = m.inputNames.Update(msg)
+	// 	m.inputNames.Blur()
+	// 	// m.inputNamesData = m.inputNames.Value()
+	// 	// return m, cmd
+
+	// 	m.filePath, cmd = m.filePath.Update(msg)
+	// 	m.filePath.Blur()
+	// 	// m.filePathData = m.inputNames.Value()
+	// 	return m, cmd
+	// }
 
 	// Return the updated model to the Bubble Tea runtime for processing.
 	// Note that we're not returning a command.
@@ -194,16 +226,14 @@ func (m Model) View() string {
 			lang.English: "Random Name Picker\n\n",
 			lang.Spanish: "Selector de Nombres\n\n",
 		},
-		DefineLanguages: lang.GetAvailableLanguages(),
 	}
 
 	// The footer
 	footer := Footer{
 		Text: map[string]string{
-			lang.English: "Press q to quit.\n",
-			lang.Spanish: "Presiona q para salir.\n",
+			lang.English: "Press Esc to quit.\n",
+			lang.Spanish: "Presiona Esc para salir.\n",
 		},
-		DefineLanguages: lang.GetAvailableLanguages(),
 	}
 
 	if m.selectedLanguage == "" {
@@ -216,7 +246,6 @@ func (m Model) View() string {
 				lang.English: "Select the language:\n",
 				lang.Spanish: "Selecciona el idioma:\n",
 			},
-			DefineLanguages: lang.GetAvailableLanguages(),
 		}
 
 		view += languageLabel.Text[lang.English]
@@ -259,7 +288,6 @@ func (m Model) View() string {
 				lang.English: "Select the source:\n",
 				lang.Spanish: "Selecciona la fuente:\n",
 			},
-			DefineLanguages: lang.GetAvailableLanguages(),
 		}
 
 		view += sourceLabel.Text[m.selectedLanguage]
@@ -286,72 +314,91 @@ func (m Model) View() string {
 
 	// If selected source is FILE  we need to show the input field
 
+	// if m.selectedSource == FILE && m.filePathData == "" {
+
+	// 	m.typing = true
+
+	// 	view += header.Text[m.selectedLanguage]
+
+	// 	// Label to select the source
+
+	// 	sourceLabel := lang.Label{
+	// 		Text: map[string]string{
+	// 			lang.English: "Enter the file path:\n",
+	// 			lang.Spanish: "Ingresa la ruta del archivo:\n",
+	// 		},
+	// 	}
+
+	// 	view += sourceLabel.Text[m.selectedLanguage]
+
+	// 	m.filePath.Focus()
+
+	// 	view += "\n"
+
+	// 	view += fmt.Sprintf("%s\n", m.filePath.View())
+
+	// 	view += footer.Text[m.selectedLanguage]
+
+	// 	return view
+	// }
+
+	// // If selected source is MANUAL we need to show the input field
+
+	// if m.selectedSource == MANUAL && m.inputNamesData == "" {
+
+	// 	m.typing = true
+
+	// 	view += header.Text[m.selectedLanguage]
+
+	// 	// Label to select the source
+	// 	sourceLabel := lang.Label{
+	// 		Text: map[string]string{
+	// 			lang.English: "Enter the names separated by commas:\n",
+	// 			lang.Spanish: "Ingresa los nombres separados por comas:\n",
+	// 		},
+	// 	}
+
+	// 	view += sourceLabel.Text[m.selectedLanguage]
+
+	// 	m.inputNames.Focus()
+
+	// 	view += "\n"
+
+	// 	view += fmt.Sprintf("%s\n", m.inputNames.View())
+
+	// 	view += footer.Text[m.selectedLanguage]
+
+	// 	return view
+	// }
+
 	if m.selectedSource == FILE && m.filePathData == "" {
-		view += header.Text[m.selectedLanguage]
+		m.filePathData = m.filePath.Value()
+		names, err := utils.ReadNamesFromFile(m.filePathData)
 
-		// Label to select the source
-
-		sourceLabel := lang.Label{
-			Text: map[string]string{
-				lang.English: "Enter the file path:\n",
-				lang.Spanish: "Ingresa la ruta del archivo:\n",
-			},
-			DefineLanguages: lang.GetAvailableLanguages(),
+		if err != nil {
+			m.err = err
+			m.names = make([]string, 0)
 		}
 
-		view += sourceLabel.Text[m.selectedLanguage]
+		m.names = names
 
-		m.filePath.Placeholder = "names.txt"
-		m.filePath.Focus()
-
-		view += "\n"
-
-		view += fmt.Sprintf("%s\n", m.filePath.View())
-
-		view += footer.Text[m.selectedLanguage]
-
-		return view
 	}
 
-	// If selected source is MANUAL we need to show the input field
-
 	if m.selectedSource == MANUAL && m.inputNamesData == "" {
-		view += header.Text[m.selectedLanguage]
-
-		// Label to select the source
-		sourceLabel := lang.Label{
-			Text: map[string]string{
-				lang.English: "Enter the names separated by commas:\n",
-				lang.Spanish: "Ingresa los nombres separados por comas:\n",
-			},
-			DefineLanguages: lang.GetAvailableLanguages(),
-		}
-
-		view += sourceLabel.Text[m.selectedLanguage]
-
-		m.inputNames.Placeholder = "John, Jane, Alice"
-		m.inputNames.Focus()
-
-		view += "\n"
-
-		view += fmt.Sprintf("%s\n", m.inputNames.View())
-
-		view += footer.Text[m.selectedLanguage]
-
-		return view
+		m.inputNamesData = m.inputNames.Value()
+		m.names = utils.SplitString(m.inputNamesData, ",")
 	}
 
 	view += header.Text[m.selectedLanguage]
 
 	// Check if names are empty
-	if len(m.names) == 0 {
+	if m.names == nil || len(m.names) == 0 {
 
 		emptyLabel := lang.Label{
 			Text: map[string]string{
 				lang.English: "No names available\n",
 				lang.Spanish: "No hay nombres disponibles\n",
 			},
-			DefineLanguages: lang.GetAvailableLanguages(),
 		}
 
 		view += emptyLabel.Text[m.selectedLanguage]
