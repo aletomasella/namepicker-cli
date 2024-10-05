@@ -11,26 +11,20 @@ type Label struct {
 	DefineLanguages []string
 }
 
-func NewLabel() Label {
-	return Label{
-		Text: make(map[string]string),
-	}
-}
-
 // define all available languages
 const (
-	english = "en"
-	spanish = "es"
+	English = "en"
+	Spanish = "es"
 )
 
 func GetAvailableLanguages() []string {
-	return []string{english, spanish}
+	return []string{English, Spanish}
 }
 
 // Set the text for a given language
 func (l *Label) SetText(lang string, text string) error {
 	// validate the language
-	if lang != english && lang != spanish {
+	if lang != English && lang != Spanish {
 		return errors.New("unsupported language")
 	}
 

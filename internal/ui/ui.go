@@ -3,7 +3,15 @@ package ui
 import (
 	"fmt"
 
+	"github.com/aletomasella/namepicker-cli/internal/lang"
+	"github.com/aletomasella/namepicker-cli/internal/utils"
 	tea "github.com/charmbracelet/bubbletea"
+)
+
+const (
+	FILE   = "file"
+	RANDOM = "random"
+	MANUAL = "manual"
 )
 
 type Model struct {
@@ -14,6 +22,10 @@ type Model struct {
 	selectedSource   string
 }
 
+type Header lang.Label
+
+type Footer lang.Label
+
 // First the user must select the language from the available languages
 // Then the user must select from where do they want to get the names from:
 // - Random names
@@ -21,20 +33,35 @@ type Model struct {
 // - Write the names manually separated by commas
 // Then we execute our logic randomly selecting a name from the selected source and displaying it until the user quits or the source is empty
 
-func InitialModel() Model {
-	return Model{
-		// Our to-do list is a grocery list
-		choices: []string{"Buy carrots", "Buy celery", "Buy kohlrabi"},
+func inicializeNameChoices() map[string][]string {
+	nameChoices := make(map[string][]string)
 
-		// A map which indicates which choices are selected. We're using
-		// the  map like a mathematical set. The keys refer to the indexes
-		// of the `choices` slice, above.
+	nameSeed := []string{"John", "Jane", "Alice", "Bob", "Charlie", "David", "Eve", "Frank", "Grace", "Heidi", "Ivan", "Judy", "Kevin", "Laura", "Michael", "Nancy", "Oliver", "Peggy", "Quincy", "Rita", "Steve", "Tina", "Ursula", "Victor", "Wendy", "Xavier", "Yvonne", "Zack"}
+
+	// Randomize the names
+	randomSeed := utils.RandomizeSlice(nameSeed)
+
+	nameChoices[RANDOM] = randomSeed
+	nameChoices[FILE] = make([]string, 0)
+	nameChoices[MANUAL] = make([]string, 0)
+
+	return nameChoices
+}
+
+func InitialModel() Model {
+
+	nameChoices := inicializeNameChoices()
+
+	// Default name choices are the random names
+
+	return Model{
+		choices:  nameChoices[RANDOM],
 		selected: make(map[int]struct{}),
+		cursor:   0,
 	}
 }
 
 func (m Model) Init() tea.Cmd {
-	// Just return `nil`, which means "no I/O right now, please."
 	return nil
 }
 
@@ -46,6 +73,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		// Cool, what was the actual key pressed?
 		switch msg.String() {
+
+		// The r key randomizes the order of the choices in the list
+		case "r":
+			m.choices = utils.RandomizeSlice(m.choices)
 
 		// These keys should exit the program.
 		case "ctrl+c", "q":
@@ -82,7 +113,19 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m Model) View() string {
 	// The header
-	s := "What should we buy at the market?\n\n"
+
+	// Default language is English
+	// The header
+
+	header := Header{
+		Text: map[string]string{
+			lang.English: "Name Picker\n\n",
+			lang.Spanish: "Selector de Nombres\n\n",
+		},
+		DefineLanguages: lang.GetAvailableLanguages(),
+	}
+
+	view := header.Text[lang.Spanish]
 
 	// Iterate over our choices
 	for i, choice := range m.choices {
@@ -100,12 +143,20 @@ func (m Model) View() string {
 		}
 
 		// Render the row
-		s += fmt.Sprintf("%s [%s] %s\n", cursor, checked, choice)
+		view += fmt.Sprintf("%s [%s] %s\n", cursor, checked, choice)
 	}
 
 	// The footer
-	s += "\nPress q to quit.\n"
+	footer := Footer{
+		Text: map[string]string{
+			lang.English: "Press q to quit.\n",
+			lang.Spanish: "Presiona q para salir.\n",
+		},
+		DefineLanguages: lang.GetAvailableLanguages(),
+	}
+
+	view += footer.Text[lang.Spanish]
 
 	// Send the UI for rendering
-	return s
+	return view
 }
