@@ -8,6 +8,11 @@ import (
 )
 
 func RandomizeNonSelectedSlice(slice []string, selected map[int]struct{}) ([]string, map[int]struct{}) {
+
+	if len(slice) <= 1 {
+		return slice, selected
+	}
+
 	// Create a new slice to store the non-selected elements
 	var nonSelected []string
 	var selectedSlice []string
