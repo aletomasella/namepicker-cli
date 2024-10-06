@@ -267,7 +267,7 @@ func (m Model) View() string {
 		}
 		view += footer.Text[lang.English]
 
-		return view
+		return Render(view)
 
 	}
 
@@ -279,7 +279,7 @@ func (m Model) View() string {
 
 		view += footer.Text[m.selectedLanguage]
 
-		return view
+		return Render(view)
 	}
 
 	if m.selectedSource == "" {
@@ -312,7 +312,7 @@ func (m Model) View() string {
 
 		view += footer.Text[m.selectedLanguage]
 
-		return view
+		return Render(view)
 	}
 
 	if m.filePath.Focused() {
@@ -336,7 +336,7 @@ func (m Model) View() string {
 
 		view += footer.Text[m.selectedLanguage]
 
-		return view
+		return Render(view)
 	}
 
 	if m.inputNames.Focused() {
@@ -359,7 +359,7 @@ func (m Model) View() string {
 
 		view += footer.Text[m.selectedLanguage]
 
-		return view
+		return Render(view)
 	}
 
 	view += header.Text[m.selectedLanguage]
@@ -378,7 +378,7 @@ func (m Model) View() string {
 
 		view += footer.Text[m.selectedLanguage]
 
-		return view
+		return Render(view)
 	}
 
 	// Iterate over our choices
@@ -413,5 +413,5 @@ func (m Model) View() string {
 	view += footer.Text[m.selectedLanguage]
 
 	// Send the UI for rendering
-	return view
+	return Render(view)
 }
