@@ -400,6 +400,16 @@ func (m Model) View() string {
 		view += fmt.Sprintf("%s [%s] %s\n", cursor, checked, choice)
 	}
 
+	// Add label for "r" key
+	randomizeLabel := lang.Label{
+		Text: map[string]string{
+			lang.English: "\nPress 'r' to randomize the names\n",
+			lang.Spanish: "\nPresiona 'r' para mezclar los nombres\n",
+		},
+	}
+
+	view += randomizeLabel.Text[m.selectedLanguage]
+
 	view += footer.Text[m.selectedLanguage]
 
 	// Send the UI for rendering
