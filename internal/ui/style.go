@@ -15,9 +15,11 @@ var style = lipgloss.NewStyle().
 	//	BorderForeground(lipgloss.Color("63")).
 	// blue foreground
 	Foreground(lipgloss.Color("35")).
-	PaddingTop(2).
-	PaddingLeft(4).
-	Width(22).
+	PaddingTop(5).
+	PaddingLeft(5).
+	PaddingRight(5).
+	PaddingBottom(5).
+	Width(80).
 	BorderStyle(lipgloss.RoundedBorder())
 
 // // Set a rounded, yellow-on-purple border to the top and left
