@@ -14,7 +14,7 @@ var style = lipgloss.NewStyle().
 	Bold(true).
 	//	BorderForeground(lipgloss.Color("63")).
 	// blue foreground
-	Foreground(lipgloss.Color("35")).
+	Foreground(lipgloss.Color("36")).
 	PaddingTop(5).
 	PaddingLeft(5).
 	PaddingRight(5).

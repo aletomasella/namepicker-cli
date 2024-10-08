@@ -244,8 +244,8 @@ func (m Model) View() string {
 		// Label to select the language
 		languageLabel := lang.Label{
 			Text: map[string]string{
-				lang.English: "Select the language:\n",
-				lang.Spanish: "Selecciona el idioma:\n",
+				lang.English: "Select the language:\n\n",
+				lang.Spanish: "Selecciona el idioma:\n\n",
 			},
 		}
 
@@ -265,6 +265,9 @@ func (m Model) View() string {
 			view += fmt.Sprintf("%s [%s] %s\n", cursor, checked, l)
 
 		}
+
+		view += "\n"
+
 		view += footer.Text[lang.English]
 
 		return Render(view)
@@ -288,8 +291,8 @@ func (m Model) View() string {
 		// Label to select the source
 		sourceLabel := lang.Label{
 			Text: map[string]string{
-				lang.English: "Select the source:\n",
-				lang.Spanish: "Selecciona la fuente:\n",
+				lang.English: "Select the source:\n\n",
+				lang.Spanish: "Selecciona la fuente:\n\n",
 			},
 		}
 
@@ -310,6 +313,8 @@ func (m Model) View() string {
 			view += fmt.Sprintf("%s [%s] %s\n", cursor, checked, s)
 		}
 
+		view += "\n"
+
 		view += footer.Text[m.selectedLanguage]
 
 		return Render(view)
@@ -323,8 +328,8 @@ func (m Model) View() string {
 
 		sourceLabel := lang.Label{
 			Text: map[string]string{
-				lang.English: "Enter the file path:\n",
-				lang.Spanish: "Ingresa la ruta del archivo:\n",
+				lang.English: "Enter the file path:\n\n",
+				lang.Spanish: "Ingresa la ruta del archivo:\n\n",
 			},
 		}
 
@@ -333,6 +338,8 @@ func (m Model) View() string {
 		view += "\n"
 
 		view += fmt.Sprintf("%s\n", m.filePath.View())
+
+		view += "\n"
 
 		view += footer.Text[m.selectedLanguage]
 
@@ -346,8 +353,8 @@ func (m Model) View() string {
 		// Label to select the source
 		sourceLabel := lang.Label{
 			Text: map[string]string{
-				lang.English: "Enter the names separated by commas:\n",
-				lang.Spanish: "Ingresa los nombres separados por comas:\n",
+				lang.English: "Enter the names separated by commas:\n\n",
+				lang.Spanish: "Ingresa los nombres separados por comas:\n\n",
 			},
 		}
 
@@ -356,6 +363,8 @@ func (m Model) View() string {
 		view += "\n"
 
 		view += fmt.Sprintf("%s\n", m.inputNames.View())
+
+		view += "\n"
 
 		view += footer.Text[m.selectedLanguage]
 
@@ -369,12 +378,14 @@ func (m Model) View() string {
 
 		emptyLabel := lang.Label{
 			Text: map[string]string{
-				lang.English: "No names available\n",
-				lang.Spanish: "No hay nombres disponibles\n",
+				lang.English: "No names available\n\n",
+				lang.Spanish: "No hay nombres disponibles\n\n",
 			},
 		}
 
 		view += emptyLabel.Text[m.selectedLanguage]
+
+		view += "\n"
 
 		view += footer.Text[m.selectedLanguage]
 
@@ -400,11 +411,13 @@ func (m Model) View() string {
 		view += fmt.Sprintf("%s [%s] %s\n", cursor, checked, choice)
 	}
 
+	view += "\n"
+
 	// Add label for "r" key
 	randomizeLabel := lang.Label{
 		Text: map[string]string{
-			lang.English: "\nPress 'r' to randomize the names\n",
-			lang.Spanish: "\nPresiona 'r' para mezclar los nombres\n",
+			lang.English: "\nPress 'r' to randomize the names\n\n",
+			lang.Spanish: "\nPresiona 'r' para mezclar los nombres\n\n",
 		},
 	}
 
